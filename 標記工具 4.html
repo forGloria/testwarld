@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>猜歌題標記工具</title>
+<style>
+:root{
+  --bg:#150E1F;
+  --panel:#1E1530;
+  --panel-2:#261B3B;
+  --line:#372a4f;
+  --ink:#EDE7F5;
+  --ink-dim:#9C8FB3;
+  --violet:#A855F7;
+  --violet-soft:#6d3fa8;
+  --gold:#E8B04B;
+  --red:#E05E6B;
+  --green:#5FCB92;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:"PingFang TC","Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  font-size:15px;
+  line-height:1.6;
+}
+button{font-family:inherit;font-size:14px;cursor:pointer}
+input,textarea{font-family:inherit;font-size:14px}
+
+header{
+  padding:18px 22px 14px;
+  border-bottom:1px solid var(--line);
+  display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+}
+header h1{
+  margin:0;font-size:19px;font-weight:700;letter-spacing:.06em;
+}
+.hint{color:var(--ink-dim);font-size:13px}
+
+.tabs{display:flex;gap:6px;padding:12px 22px 0}
+.tab{
+  background:none;border:1px solid var(--line);border-bottom:none;
+  color:var(--ink-dim);padding:8px 18px;border-radius:8px 8px 0 0;
+}
+.tab.on{background:var(--panel);color:var(--ink);border-color:var(--line)}
+
+.wrap{display:grid;grid-template-columns:280px 1fr;gap:0;min-height:60vh}
+@media(max-width:820px){.wrap{grid-template-columns:1fr}}
+
+.side{
+  border-right:1px solid var(--line);
+  padding:16px 12px 40px;
+  max-height:78vh;overflow-y:auto;
+}
+@media(max-width:820px){.side{border-right:none;border-bottom:1px solid var(--line);max-height:none}}
+.tier{margin:0 0 6px;padding:10px 8px 4px;font-size:12px;letter-spacing:.14em;color:var(--violet);font-weight:700}
+.song{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:7px;cursor:pointer;
+  color:var(--ink-dim);
+}
+.song:hover{background:var(--panel)}
+.song.on{background:var(--violet-soft);color:#fff}
+.song .dot{width:7px;height:7px;border-radius:50%;background:#4a3a66;flex:none}
+.song.done .dot{background:var(--gold)}
+.song.skip .dot{background:var(--red)}
+.song .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.main{padding:20px 24px 60px}
+.card{
+  background:var(--panel);border:1px solid var(--line);
+  border-radius:12px;padding:18px;margin-bottom:16px;
+}
+.card h2{margin:0 0 4px;font-size:17px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{
+  background:var(--panel-2);border:1px solid var(--line);
+  color:var(--ink);padding:10px 16px;border-radius:8px;
+  min-height:42px;touch-action:manipulation;
+}
+.timebar{height:34px}
+.timebar::-webkit-slider-thumb{width:26px;height:26px}
+.song{min-height:40px}
+.btn:hover{border-color:var(--violet)}
+.btn.pri{background:var(--violet);border-color:var(--violet);color:#fff;font-weight:600}
+.btn.pri:hover{filter:brightness(1.1)}
+.btn.warn{color:var(--red);border-color:#5a2b34}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.txt{
+  background:#120c1b;border:1px solid var(--line);color:var(--ink);
+  padding:8px 11px;border-radius:8px;
+}
+.results{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.res{
+  display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);
+}
+.res.on{border-color:var(--violet);background:#2e2049}
+.res .meta{flex:1;min-width:110px}
+@media(max-width:760px){
+  .res .meta{flex:1 1 100%;order:-1}
+  .res button{flex:1 1 auto}
+}
+.res .t{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res .s{font-size:12.5px;color:var(--ink-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.player{margin-top:14px}
+.timebar{width:100%;margin:10px 0 4px;accent-color:var(--violet)}
+.tnum{font-variant-numeric:tabular-nums;font-size:22px;font-weight:700;letter-spacing:.02em}
+.tsub{font-size:12.5px;color:var(--ink-dim)}
+.marked{color:var(--gold);font-variant-numeric:tabular-nums;font-weight:700}
+
+.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}
+@media(max-width:560px){.opts{grid-template-columns:1fr}}
+.opt{display:flex;align-items:center;gap:8px}
+.opt input[type=text]{flex:1;width:100%}
+.opt label{font-size:13px;color:var(--ink-dim);width:16px}
+
+.fill-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.fill-item{display:flex;gap:10px;align-items:center;padding:8px 11px;border:1px solid var(--line);border-radius:9px}
+.fill-item .fi{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.status{margin-left:auto;font-size:13px;color:var(--ink-dim)}
+.err{color:var(--red);font-size:13.5px;margin-top:8px}
+.ok{color:var(--green)}
+textarea.exp{width:100%;height:170px;background:#120c1b;border:1px solid var(--line);color:var(--ink);border-radius:9px;padding:11px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px}
+.empty{color:var(--ink-dim);padding:30px 0;text-align:center}
+kbd{background:var(--panel-2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font-size:12px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>猜歌題標記工具</h1>
+  <span class="hint">選版本 → 拖時間軸 → 記下秒數 → 匯出</span>
+  <span class="status" id="stat"></span>
+</header>
+
+<div class="tabs">
+  <button class="tab on" id="tabA">猜歌名（55 首）</button>
+  <button class="tab" id="tabB">接字題</button>
+  <button class="tab" id="tabC">匯出 / 匯入</button>
+</div>
+
+<!-- ============ 猜歌名 ============ -->
+<div class="wrap" id="viewA">
+  <div class="side" id="songlist"></div>
+  <div class="main">
+    <div id="paneA"><div class="empty">左邊選一首歌開始</div></div>
+  </div>
+</div>
+
+<!-- ============ 接字題 ============ -->
+<div class="wrap" id="viewB" style="display:none;grid-template-columns:1fr">
+  <div class="main">
+    <div class="card">
+      <h2>新增一題接字</h2>
+      <p class="hint" style="margin:2px 0 12px">音檔播到斷點就停，玩家選下一個字。斷點必須落在試聽片段裡面。</p>
+      <div class="row">
+        <input class="txt" id="fq" placeholder="搜尋歌曲，例如：鄧紫棋 泡沫" style="flex:1;min-width:200px">
+        <button class="btn pri" id="fsearch">搜尋</button>
+      </div>
+      <div class="results" id="fres"></div>
+      <div id="fplayer"></div>
+    </div>
+    <div class="card">
+      <h2>已建立的接字題 <span class="hint" id="fcount"></span></h2>
+      <div class="fill-list" id="flist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 匯出 ============ -->
+<div class="wrap" id="viewC" style="display:none;grid-template-columns:1fr">
+  <div class="main">
+    <div class="card">
+      <h2>匯出</h2>
+      <p class="hint" style="margin:2px 0 10px">按「產生」後把整段複製起來貼給我。</p>
+      <div class="row"><button class="btn pri" id="gen">產生</button><button class="btn" id="copy">複製</button></div>
+      <textarea class="exp" id="expbox" style="margin-top:12px" placeholder="按產生"></textarea>
+    </div>
+    <div class="card">
+      <h2>匯入</h2>
+      <p class="hint" style="margin:2px 0 10px">把之前匯出的內容貼回來，可以接著標。這會覆蓋目前的進度。</p>
+      <textarea class="exp" id="impbox" placeholder="貼在這裡"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn" id="imp">載入</button><span id="impmsg" class="hint"></span></div>
+    </div>
+    <div class="card">
+      <h2>清空</h2>
+      <div class="row"><button class="btn warn" id="clr">全部清空</button><span class="hint">清掉之後救不回來，先匯出。</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------------- 歌單 ---------------- */
+const TIERS = [
+  {key:"A", label:"出一題（每輪抽 1）", songs:["光年之外","多遠都要在一起","再見","來自天堂的魔鬼","倒數","天空沒有極限","我的秘密","新的心跳","喜歡你","A.I.N.Y.愛你"]},
+  {key:"B", label:"中（每輪抽 2）", songs:["離心力","只有我和你的地方","GLORIA","摩天動物園","灰狼","句號","很久以後","倒流時間","於是","冰河時代","不想回家","唯一","老人與海","讓世界暫停一分鐘","差不多姑娘","奇蹟","毒蘋果","那一夜","自由的你"]},
+  {key:"C", label:"多（每輪抽 3）", songs:["孤獨","錯過不錯","另一個童話","平行世界","萬國覺醒","失真","One Button","Fly Away","我不懂愛","有心人","寂寞星球的玫瑰","瞬間","塞納河","What Have U Done","你成為了誰的幸福","get over you","盲點","game over","美好的舊時光","兩個自己","超能力","等一個他","Why","下一秒（我們就要死掉）","After Tonight","末日"]}
+];
+const TOTAL = TIERS.reduce((n,t)=>n+t.songs.length,0);
+
+/* ---------------- 狀態 ---------------- */
+let S = { guess:{}, fill:[] };
+let cur = null;          // 目前選的歌名
+let curResults = [];     // 搜尋結果
+let audio = new Audio();
+let stopAt = null;       // 播到這裡停
+
+function save(){ try{ localStorage.setItem("gem_mark_v1", JSON.stringify(S)); }catch(e){} }
+function load(){ try{ const r=localStorage.getItem("gem_mark_v1"); if(r) S=JSON.parse(r); }catch(e){} }
+load();
+
+/* ---------------- iTunes 查詢（JSONP） ---------------- */
+function itunes(term, cb){
+  const name = "itcb_" + Math.random().toString(36).slice(2);
+  const s = document.createElement("script");
+  let done = false;
+  window[name] = d => { done=true; cleanup(); cb(null, (d && d.results) || []); };
+  function cleanup(){ delete window[name]; s.remove(); }
+  s.onerror = () => { if(!done){ cleanup(); cb(new Error("連不上 iTunes")); } };
+  setTimeout(()=>{ if(!done){ cleanup(); cb(new Error("查詢逾時")); } }, 12000);
+  s.src = "https://itunes.apple.com/search?term=" + encodeURIComponent(term) +
+          "&country=TW&media=music&entity=song&limit=20&callback=" + name;
+  document.body.appendChild(s);
+}
+
+/* ---------------- 播放 ---------------- */
+let seekWant = null, seekTries = 0, unlocked = false;
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=";
+
+/* iOS：第一次碰畫面時先解鎖音訊元件，之後才能在非點擊當下播放 */
+function unlock(){
+  if(unlocked) return;
+  unlocked = true;
+  const keep = audio.src;
+  audio.src = SILENT;
+  const p = audio.play();
+  if(p && p.then) p.then(()=>{ audio.pause(); if(keep) audio.src = keep; })
+                   .catch(()=>{ if(keep) audio.src = keep; });
+}
+["touchstart","mousedown","keydown"].forEach(e=>
+  document.addEventListener(e, unlock, {once:true, passive:true}));
+
+function seekTo(t){
+  const target = Math.max(0, t||0);
+  seekWant = target; seekTries = 0;
+  const go = ()=>{ try{ audio.currentTime = target; }catch(e){} };
+  if(audio.readyState >= 1) go();
+  else audio.addEventListener("loadedmetadata", go, {once:true});
+}
+
+/* 播放：先試著直接跳；跳不動就靜音快轉到定點才出聲 */
+let ffTarget = null;                 // 正在快轉的目標秒數
+
+function playFrom(url, from, until){
+  unlock();
+  stopAt  = (until==null) ? null : until;
+  const target = Math.max(0, from||0);
+  seekWant = null; ffTarget = null;
+  audio.muted = false; audio.playbackRate = 1;
+
+  const begin = ()=>{
+    const play = ()=>{ const p = audio.play(); if(p && p.catch) p.catch(()=>{}); };
+
+    if(target < 0.1){ play(); return; }
+
+    try{ audio.currentTime = target; }catch(e){}
+
+    // 給它一點時間看跳不跳得動，跳不動就快轉
+    setTimeout(()=>{
+      if(Math.abs(audio.currentTime - target) < 0.4){ play(); return; }
+      ffTarget = target;
+      audio.muted = true;
+      audio.playbackRate = 4;
+      try{ audio.currentTime = 0; }catch(e){}
+      play();
+    }, 260);
+  };
+
+  audio.pause();
+  if(url && audio.src !== url){
+    audio.src = url;
+    audio.addEventListener("loadedmetadata", begin, {once:true});
+    audio.load();
+  } else if(audio.readyState >= 1){ begin(); }
+  else audio.addEventListener("loadedmetadata", begin, {once:true});
+}
+
+audio.addEventListener("timeupdate", ()=>{
+  // 快轉到定點就開聲音、回正常速度
+  if(ffTarget != null){
+    if(audio.currentTime >= ffTarget - 0.05){
+      audio.playbackRate = 1;
+      audio.muted = false;
+      ffTarget = null;
+    } else {
+      return;                        // 快轉途中不做別的判斷
+    }
+  }
+  if(stopAt!=null && audio.currentTime >= stopAt){ audio.pause(); stopAt=null; }
+  const bar = document.getElementById("bar");
+  if(bar && !bar.dragging){ bar.value = audio.currentTime; }
+  const now = document.getElementById("now");
+  if(now) now.textContent = audio.currentTime.toFixed(2) + " 秒";
+});
+
+/* ---------------- 左側歌單 ---------------- */
+function renderList(){
+  const el = document.getElementById("songlist");
+  el.innerHTML = "";
+  TIERS.forEach(t=>{
+    const h = document.createElement("div");
+    h.className = "tier"; h.textContent = t.label;
+    el.appendChild(h);
+    t.songs.forEach(nm=>{
+      const g = S.guess[nm];
+      const d = document.createElement("div");
+      d.className = "song" + (cur===nm?" on":"") + (g&&g.skip?" skip":(g&&g.startSec!=null?" done":""));
+      d.innerHTML = '<span class="dot"></span><span class="nm"></span>';
+      d.querySelector(".nm").textContent = nm;
+      d.onclick = ()=>{ cur = nm; curResults=[]; audio.pause(); renderList(); renderA(); };
+      el.appendChild(d);
+    });
+  });
+  const done = Object.values(S.guess).filter(g=>g.startSec!=null).length;
+  const skip = Object.values(S.guess).filter(g=>g.skip).length;
+  document.getElementById("stat").textContent =
+    "已標記 " + done + " / " + TOTAL + (skip? "・查無 "+skip : "") + "・接字 " + S.fill.length + " 題";
+}
+
+/* ---------------- 猜歌名面板 ---------------- */
+function renderA(){
+  const p = document.getElementById("paneA");
+  if(!cur){ p.innerHTML = '<div class="empty">左邊選一首歌開始</div>'; return; }
+  const g = S.guess[cur] || {};
+  p.innerHTML = `
+    <div class="card">
+      <h2>${esc(cur)}</h2>
+      <div class="row" style="margin-top:10px">
+        <input class="txt" id="q" style="flex:1;min-width:190px">
+        <button class="btn pri" id="go">搜尋</button>
+        <button class="btn" id="alt">改用 G.E.M. 搜</button>
+        <button class="btn warn" id="skip">${g.skip?"取消查無":"標記為查無"}</button>
+      </div>
+      <div id="msg"></div>
+      <div class="results" id="res"></div>
+    </div>
+    <div id="pl"></div>`;
+  document.getElementById("q").value = g.term || ("鄧紫棋 " + cur);
+  document.getElementById("go").onclick = ()=>search(document.getElementById("q").value);
+  document.getElementById("alt").onclick = ()=>{
+    document.getElementById("q").value = "G.E.M. " + cur;
+    search("G.E.M. " + cur);
+  };
+  document.getElementById("skip").onclick = ()=>{
+    S.guess[cur] = Object.assign({}, S.guess[cur], {skip: !(g.skip)});
+    save(); renderList(); renderA();
+  };
+  if(g.previewUrl) renderPlayer(g);
+  if(!g.skip && !curResults.length) search(document.getElementById("q").value);
+}
+
+function search(term){
+  const msg = document.getElementById("msg");
+  msg.className = "hint"; msg.textContent = "查詢中…";
+  itunes(term, (err, list)=>{
+    if(err){ msg.className="err"; msg.textContent = err.message + "。請確認網路，或稍等一下再試（iTunes 每分鐘有查詢次數上限）。"; return; }
+    curResults = list.filter(r=>r.previewUrl);
+    if(!curResults.length){ msg.className="err"; msg.textContent="查不到有試聽的版本。換個關鍵字，或按「標記為查無」。"; renderRes(); return; }
+    msg.textContent = "找到 " + curResults.length + " 個版本，聽聽看挑正確的那個。";
+    S.guess[cur] = Object.assign({}, S.guess[cur], {term});
+    save(); renderRes();
+  });
+}
+
+function renderRes(){
+  const box = document.getElementById("res");
+  box.innerHTML = "";
+  const g = S.guess[cur] || {};
+  curResults.forEach(r=>{
+    const d = document.createElement("div");
+    d.className = "res" + (g.trackId===r.trackId?" on":"");
+    d.innerHTML = `<button class="btn">試聽</button>
+      <div class="meta"><div class="t"></div><div class="s"></div></div>
+      <button class="btn pri">選這個</button>`;
+    d.querySelector(".t").textContent = r.trackName;
+    d.querySelector(".s").textContent = r.collectionName + "・" + (r.artistName||"") + "・" + (r.releaseDate||"").slice(0,4);
+    d.querySelectorAll("button")[0].onclick = ()=>playFrom(r.previewUrl, 0, null);
+    d.querySelectorAll("button")[1].onclick = ()=>{
+      S.guess[cur] = Object.assign({}, S.guess[cur], {
+        trackId:r.trackId, trackName:r.trackName, collectionName:r.collectionName,
+        previewUrl:r.previewUrl, skip:false,
+        startSec: (S.guess[cur]&&S.guess[cur].startSec) ?? null,
+        clipLen: (S.guess[cur]&&S.guess[cur].clipLen) || 5
+      });
+      save(); renderList(); renderRes(); renderPlayer(S.guess[cur]);
+    };
+    box.appendChild(d);
+  });
+}
+
+function renderPlayer(g){
+  const pl = document.getElementById("pl");
+  pl.innerHTML = `
+    <div class="card player">
+      <h2>挑起播點</h2>
+      <p class="hint" style="margin:2px 0 6px">${esc(g.trackName||"")}・${esc(g.collectionName||"")}</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="pp">播放 / 暫停</button>
+        <button class="btn" id="m5">−0.5</button>
+        <button class="btn" id="m1">−0.1</button>
+        <button class="btn" id="p1">+0.1</button>
+        <button class="btn" id="p5">+0.5</button>
+      </div>
+      <input type="range" class="timebar" id="bar" min="0" max="30" step="0.01" value="0">
+      <div class="row">
+        <span class="tnum" id="now">0.00 秒</span>
+        <span class="tsub">目前位置</span>
+        <span style="flex:1"></span>
+        <span class="tsub">播放長度</span>
+        <input class="txt" id="len" type="number" min="1" max="15" step="0.5" style="width:74px" value="${g.clipLen||5}">
+        <span class="tsub">秒</span>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn pri" id="mark">把這裡設為起播點</button>
+        <button class="btn" id="test" ${g.startSec==null?"disabled":""}>試播效果</button>
+        <span style="flex:1"></span>
+        <span class="tsub">目前起播點</span>
+        <span class="marked" id="mk">${g.startSec==null?"未設定":g.startSec.toFixed(2)+" 秒"}</span>
+      </div>
+    </div>`;
+  if(audio.src !== g.previewUrl) audio.src = g.previewUrl;
+  const bar = document.getElementById("bar");
+  audio.addEventListener("loadedmetadata", ()=>{ if(isFinite(audio.duration)) bar.max = audio.duration; }, {once:true});
+  if(isFinite(audio.duration) && audio.duration>0) bar.max = audio.duration;
+
+  bar.addEventListener("pointerdown", ()=>bar.dragging=true);
+  bar.addEventListener("pointerup", ()=>bar.dragging=false);
+  bar.addEventListener("input", ()=>{ seekTo(parseFloat(bar.value)); document.getElementById("now").textContent = parseFloat(bar.value).toFixed(2)+" 秒"; });
+
+  const nudge = d => { const t = Math.max(0, audio.currentTime + d); seekTo(t); bar.value = t; document.getElementById("now").textContent = t.toFixed(2)+" 秒"; };
+  document.getElementById("pp").onclick = ()=>{ stopAt=null; audio.paused? audio.play() : audio.pause(); };
+  document.getElementById("m5").onclick = ()=>nudge(-0.5);
+  document.getElementById("m1").onclick = ()=>nudge(-0.1);
+  document.getElementById("p1").onclick = ()=>nudge(0.1);
+  document.getElementById("p5").onclick = ()=>nudge(0.5);
+  document.getElementById("len").onchange = e=>{
+    S.guess[cur].clipLen = parseFloat(e.target.value)||5; save();
+  };
+  document.getElementById("mark").onclick = ()=>{
+    S.guess[cur].startSec = parseFloat(audio.currentTime.toFixed(2));
+    S.guess[cur].clipLen = parseFloat(document.getElementById("len").value)||5;
+    save(); renderList(); renderPlayer(S.guess[cur]);
+  };
+  document.getElementById("test").onclick = ()=>{
+    const gg = S.guess[cur];
+    playFrom(gg.previewUrl, gg.startSec, gg.startSec + (gg.clipLen||5));
+  };
+}
+
+/* ---------------- 接字題 ---------------- */
+let fResults = [], fPick = null;
+document.getElementById("fsearch").onclick = ()=>{
+  const term = document.getElementById("fq").value.trim();
+  if(!term) return;
+  const box = document.getElementById("fres");
+  box.innerHTML = '<div class="hint">查詢中…</div>';
+  itunes(term, (err, list)=>{
+    if(err){ box.innerHTML = '<div class="err">'+err.message+'</div>'; return; }
+    fResults = list.filter(r=>r.previewUrl);
+    if(!fResults.length){ box.innerHTML = '<div class="err">查不到有試聽的版本。</div>'; return; }
+    box.innerHTML = "";
+    fResults.forEach(r=>{
+      const d = document.createElement("div");
+      d.className = "res";
+      d.innerHTML = `<button class="btn">試聽</button><div class="meta"><div class="t"></div><div class="s"></div></div><button class="btn pri">用這個出題</button>`;
+      d.querySelector(".t").textContent = r.trackName;
+      d.querySelector(".s").textContent = r.collectionName + "・" + (r.releaseDate||"").slice(0,4);
+      d.querySelectorAll("button")[0].onclick = ()=>playFrom(r.previewUrl,0,null);
+      d.querySelectorAll("button")[1].onclick = ()=>{ fPick = r; renderFPlayer(); };
+      box.appendChild(d);
+    });
+  });
+};
+
+function renderFPlayer(){
+  const el = document.getElementById("fplayer");
+  if(!fPick){ el.innerHTML=""; return; }
+  el.innerHTML = `
+    <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:16px">
+      <h2 style="font-size:16px;margin:0 0 2px">${esc(fPick.trackName)}</h2>
+      <p class="hint" style="margin:0 0 10px">聽到要斷的那個字之前按「設為斷點」。音檔會播到這裡就停。</p>
+      <div class="row">
+        <button class="btn" id="fpp">播放 / 暫停</button>
+        <button class="btn" id="fm1">−0.1</button>
+        <button class="btn" id="fp1">+0.1</button>
+      </div>
+      <input type="range" class="timebar" id="bar" min="0" max="30" step="0.01" value="0">
+      <div class="row">
+        <span class="tnum" id="now">0.00 秒</span>
+        <span style="flex:1"></span>
+        <span class="tsub">斷點</span><span class="marked" id="fmk">未設定</span>
+        <button class="btn pri" id="fmark">設為斷點</button>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <span class="tsub">從斷點往前播</span>
+        <input class="txt" id="flead" type="number" min="2" max="15" step="1" value="6" style="width:70px">
+        <span class="tsub">秒</span>
+        <button class="btn" id="ftest">試播</button>
+      </div>
+      <div class="opts">
+        ${["A","B","C","D"].map(k=>`<div class="opt"><label>${k}</label><input class="txt" id="fo${k}" type="text" maxlength="4" placeholder="單字"></div>`).join("")}
+      </div>
+      <div class="row" style="margin-top:10px">
+        <span class="tsub">正解</span>
+        ${["A","B","C","D"].map(k=>`<label class="tsub"><input type="radio" name="fans" value="${k}" ${k==="A"?"checked":""}> ${k}</label>`).join("")}
+        <span style="flex:1"></span>
+        <button class="btn pri" id="fadd">加入題庫</button>
+      </div>
+      <div id="fmsg" class="hint" style="margin-top:8px">選項請填單字，一到兩個字。不要填詞組或整句。</div>
+    </div>`;
+  audio.src = fPick.previewUrl;
+  let cut = null;
+  const bar = document.getElementById("bar");
+  audio.addEventListener("loadedmetadata", ()=>{ if(isFinite(audio.duration)) bar.max=audio.duration; }, {once:true});
+  bar.addEventListener("pointerdown",()=>bar.dragging=true);
+  bar.addEventListener("pointerup",()=>bar.dragging=false);
+  bar.addEventListener("input",()=>{ seekTo(parseFloat(bar.value)); document.getElementById("now").textContent=parseFloat(bar.value).toFixed(2)+" 秒"; });
+  const nudge = d=>{ const t=Math.max(0,audio.currentTime+d); seekTo(t); bar.value=t; document.getElementById("now").textContent=t.toFixed(2)+" 秒"; };
+  document.getElementById("fpp").onclick=()=>{ stopAt=null; audio.paused?audio.play():audio.pause(); };
+  document.getElementById("fm1").onclick=()=>nudge(-0.1);
+  document.getElementById("fp1").onclick=()=>nudge(0.1);
+  document.getElementById("fmark").onclick=()=>{
+    cut = parseFloat(audio.currentTime.toFixed(2));
+    document.getElementById("fmk").textContent = cut.toFixed(2)+" 秒";
+  };
+  document.getElementById("ftest").onclick=()=>{
+    if(cut==null){ document.getElementById("fmsg").textContent="先設斷點。"; return; }
+    const lead = parseFloat(document.getElementById("flead").value)||6;
+    playFrom(fPick.previewUrl, Math.max(0,cut-lead), cut);
+  };
+  document.getElementById("fadd").onclick=()=>{
+    const msg = document.getElementById("fmsg");
+    const opts = ["A","B","C","D"].map(k=>document.getElementById("fo"+k).value.trim());
+    if(cut==null){ msg.className="err"; msg.textContent="先設斷點。"; return; }
+    if(opts.some(o=>!o)){ msg.className="err"; msg.textContent="四個選項都要填。"; return; }
+    const ans = document.querySelector('input[name=fans]:checked').value;
+    S.fill.push({
+      trackId:fPick.trackId, trackName:fPick.trackName, collectionName:fPick.collectionName,
+      previewUrl:fPick.previewUrl, cutSec:cut,
+      leadIn: parseFloat(document.getElementById("flead").value)||6,
+      options:opts, answer:ans
+    });
+    save(); fPick=null; document.getElementById("fplayer").innerHTML="";
+    renderFill(); renderList();
+  };
+}
+
+function renderFill(){
+  const box = document.getElementById("flist");
+  document.getElementById("fcount").textContent = "（" + S.fill.length + " 題）";
+  if(!S.fill.length){ box.innerHTML = '<div class="hint">還沒有題目。</div>'; return; }
+  box.innerHTML = "";
+  S.fill.forEach((f,i)=>{
+    const d = document.createElement("div");
+    d.className = "fill-item";
+    d.innerHTML = `<button class="btn">試播</button><div class="fi"></div><button class="btn warn">刪除</button>`;
+    d.querySelector(".fi").textContent = f.trackName + "・斷在 " + f.cutSec.toFixed(2) + " 秒・正解 " + f.answer + "（" + f.options.join(" / ") + "）";
+    d.querySelectorAll("button")[0].onclick = ()=>playFrom(f.previewUrl, Math.max(0,f.cutSec-(f.leadIn||6)), f.cutSec);
+    d.querySelectorAll("button")[1].onclick = ()=>{ S.fill.splice(i,1); save(); renderFill(); renderList(); };
+    box.appendChild(d);
+  });
+}
+
+/* ---------------- 匯出 / 匯入 ---------------- */
+document.getElementById("gen").onclick = ()=>{
+  const out = { guess:[], fill:S.fill };
+  TIERS.forEach(t=>t.songs.forEach(nm=>{
+    const g = S.guess[nm];
+    if(g && g.startSec!=null && !g.skip){
+      out.guess.push({tier:t.key, song:nm, trackId:g.trackId, trackName:g.trackName,
+                      album:g.collectionName, previewUrl:g.previewUrl,
+                      startSec:g.startSec, clipLen:g.clipLen||5});
+    }
+  }));
+  out.skipped = Object.keys(S.guess).filter(k=>S.guess[k].skip);
+  document.getElementById("expbox").value = JSON.stringify(out, null, 2);
+};
+document.getElementById("copy").onclick = ()=>{
+  const b = document.getElementById("expbox"); b.select();
+  try{ document.execCommand("copy"); }catch(e){}
+};
+document.getElementById("imp").onclick = ()=>{
+  const m = document.getElementById("impmsg");
+  try{
+    const d = JSON.parse(document.getElementById("impbox").value);
+    const g = {};
+    (d.guess||[]).forEach(x=>{ g[x.song] = {trackId:x.trackId,trackName:x.trackName,collectionName:x.album,previewUrl:x.previewUrl,startSec:x.startSec,clipLen:x.clipLen}; });
+    (d.skipped||[]).forEach(nm=>{ g[nm] = Object.assign({}, g[nm], {skip:true}); });
+    S = {guess:g, fill:d.fill||[]};
+    save(); cur=null; renderList(); renderA(); renderFill();
+    m.className="ok"; m.textContent="載入完成。";
+  }catch(e){ m.className="err"; m.textContent="格式不對，讀不進去。"; }
+};
+document.getElementById("clr").onclick = ()=>{
+  if(!confirm("確定全部清空？")) return;
+  S = {guess:{},fill:[]}; save(); cur=null; renderList(); renderA(); renderFill();
+};
+
+/* ---------------- 分頁 ---------------- */
+function tab(n){
+  ["A","B","C"].forEach(k=>{
+    document.getElementById("view"+k).style.display = (k===n)?"grid":"none";
+    document.getElementById("tab"+k).classList.toggle("on", k===n);
+  });
+}
+document.getElementById("tabA").onclick=()=>tab("A");
+document.getElementById("tabB").onclick=()=>tab("B");
+document.getElementById("tabC").onclick=()=>tab("C");
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+renderList(); renderA(); renderFill();
+</script>
+</body>
+</html>
